@@ -1,0 +1,293 @@
+<html>
+    <head>
+        <style>
+
+            .chart-container {
+                max-width: 1050 px;
+                margin: 0 auto;
+                position: relative;
+                left: 40px;
+            }
+
+            svg {
+                overflow: visible;
+            }
+
+            h1 {
+                margin: 0 auto;
+                font-family: Plantin;
+                font-size: 60;
+                margin-left: 20;
+                margin-top: 10;
+                margin-bottom: 30;
+            }
+
+            h2 {
+                font-family: Arial;
+                font-weight: 300;
+                font-size: 20;
+                margin-bottom: 5;
+                width: 700;
+            }
+
+            .highlight {
+                color: goldenrod;
+                font-family: Plantin;
+                position: fixed;
+                top: 190;
+                right: 300;
+                font-size: 30
+            }
+
+            .source {
+                font-family: Arial;
+                position: relative;
+                color: gray;
+                size: 12;
+            }
+
+            .label {
+                font-family: Arial;
+            }
+
+            .y .tick .text {
+                font-family: Arial;
+                color: gray;
+            }
+
+            .x .tick .text {
+                font-family: Arial;
+                color: gray;
+            }
+
+            .y .tick line {
+                color: gray;
+            }
+
+            .x .tick line {
+                color: gray;
+            }
+
+            .legend {
+                font-family: Arial;
+            }
+
+        </style>
+    </head>
+
+    <body>
+        <div class = "chart-container">
+            <h1 class = "headline">
+                Obamacare's First Recession
+            </h1>
+
+            <h2 class = "subhead">
+                Compared to the Great Recession, fewer people are uninsured, primarily due to the presence of the Affordable Care Act.
+            </h2>
+
+            <p1 class = "source">
+                Source: Current Population Survey
+            </p1>
+
+            <div>
+                <span class = "highlight">2009</span>
+            <div>
+
+            <svg width = "1000px" height = "500px">
+            </svg>
+        </div>
+
+        <script src="https://d3js.org/d3.v6.min.js"></script>
+
+        <script>
+         
+            let width = 800
+            let height = 500
+
+            let svg = d3.select("body").select("svg")
+
+            let margin = {top: 50, right: 20, bottom: 30, left: 10}
+
+            d3.csv("healthcare-disposable-inc.csv").then(function (data) {
+                console.log("loaded data")
+
+                data.forEach(d => {
+                    d.Percentile = +d.Percentile
+                    d.Medicaid = +d.Medicaid
+                    d.Medicare = +d.Medicare
+                    d['Medicare+Medicaid'] = +d['Medicare+Medicaid']
+                    d.CHIP = +d.CHIP
+                    d.Military = +d.Military
+                    d['Direct Purchase'] = +d['Direct Purchase']
+                    d.Employer = +d.Employer
+                    d.Other = +d.Other
+                    d.Uninsured = +d.Uninsured
+                    d['Subsidized Exchange'] = +d['Subsidized Exchange']
+                })
+
+                console.log(data)
+
+                let sel_cols = [
+                    "Medicaid",
+                    "Medicare",
+                    "Medicare+Medicaid",
+                    "CHIP",
+                    "Military",
+                    "Direct Purchase",
+                    "Employer",
+                    "Other",
+                    "Uninsured",
+                    "Subsidized Exchange"
+                ]
+
+                let sel_colors = [
+                    "#FFC914",
+                    "#E4572E",
+                    "#F29021",
+                    "#A40E4C",
+                    "#3E5641",
+                    "#17BEBB",
+                    "#EDF0DA",
+                    "#CAE5FF",
+                    "#067BC2",
+                    "#61C9A8"
+                ]
+
+                let sel_var_year = "2009";
+
+                let data09 = [...data].filter(d => d.year == "2009")
+                let data20 = [...data].filter(d => d.year == "2020")
+
+                console.log(data09)
+
+                let series09 = d3.stack()
+                    .keys(sel_cols)(data09)
+
+                    console.log({series09})
+
+                let series20 = d3.stack()
+                    .keys(sel_cols)(data20)
+
+                console.log({series20})
+
+                let hed = d3.select(".highlight")
+
+                let x = d3.scaleLinear()
+                    .domain([0, 100])
+                    .range([margin.left, width-margin.right])
+
+                let y = d3.scaleLinear()
+                    .domain([0, 1])
+                    .range([height-margin.bottom, margin.top])
+
+                let color = d3.scaleOrdinal()
+                    .domain(sel_cols)
+                    .range(sel_colors)
+            
+                let yAxisSettings = d3.axisLeft(y)
+                    .ticks(5)
+                    .tickPadding(3)
+                    .tickSize(12)
+            
+                let xAxisSettings = d3.axisBottom(x)
+                    .ticks(10)
+                    .tickSize(12) 
+                    .tickValues([5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95])
+            
+                let yAxisTicks = svg.append("g")
+                    .attr("class", "y axis")
+                    .call(yAxisSettings)
+                    .call(g => g.selectAll(".domain").remove())
+
+                let xAxisTicks = svg.append("g")
+                    .attr("class", "x axis")
+                    .call(xAxisSettings)
+                    .call(g => g.selectAll(".domain").remove())
+                    .attr("transform", `translate(0, ${height - margin.bottom})`)
+
+                let area = d3.area()
+                    .x(function (d) {return x(d.data.Percentile)})
+                    .y0(function (d) {return y(d[0])})
+                    .y1(function (d) {return y(d[1])})
+
+                let paths = svg.append("g")
+                    .attr("class", "paths")
+
+                let path;
+
+                paths
+                    .selectAll(".path")
+                    .data(series09, d => d.Percentile)
+                    .join("path")
+                    .attr("fill", d => {return color(d.key)})
+                    .attr("d", area)
+            
+                function update() {
+                    console.log("update")
+                    if (sel_var_year == 2009) {
+                        sel_var_year = 2020
+                        dance(series20)
+                        hed.html("<span class = 'highlight'> 2020 </span>")
+                    } else {
+                        sel_var_year = 2009
+                        dance(series09)
+                        hed.html("<span class = 'highlight'> 2009 </span>")
+                    }
+                }
+
+                function dance(filtered_data) {
+                    paths
+                        .selectAll(".path")
+                        .data(filtered_data, d => d.Percentile)
+                        .join("path")
+                        .attr("fill", d => {return color(d.key)})
+                        .attr("class", d => { 
+                            console.log(d) 
+                            return d.key})
+                        .transition()
+                        .duration(500)
+                        .ease(d3.easeLinear)
+                        .attr("d", area)
+
+                }
+
+                var timer = d3.interval(update, 2000)
+
+                svg.append("text")
+                    .attr("class", "label")
+                    .attr("x", 340)
+                    .attr("y", 520)
+                    .text("Income Percentile")
+                    .style("fill", "gray")
+
+                var size = 20
+
+                svg.selectAll("mydots")
+                    .data(sel_cols)
+                    .enter()
+                    .append("rect")
+                        .attr("x", 800)
+                        .attr("y", function (d, i) { return 100 + i*(size+5)})
+                        .attr("width", size)
+                        .attr("height", size)
+                        .style("fill", function (d) {return color(d)})
+                        .attr("class", "square")
+
+                svg.selectAll("mylabels")
+                    .data(sel_cols)
+                    .attr("class", "legend")
+                    .enter()
+                    .append("text")
+                        .attr("x", 800 + size*1.2)
+                        .attr("y", function (d, i) {return 100 + i*(size+5)+(size/2)})
+                        .style("fill", function (d) {return color(d)})
+                        .text(function (d) {return d})
+                        .attr("text-anchor", "left")
+                        .attr("class", "legend")
+
+                })
+    
+            </script>
+    
+    </body>
+</html>
